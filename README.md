@@ -295,6 +295,116 @@ The stock levels for most products in 2011 show **high month-to-month fluctuatio
 
 A more **consistent inventory strategy** is needed to balance supply and demand, reducing large fluctuations.
 
+### **Query 07: Calc Ratio of Stock / Sales in 2011 by product name, by month. Order results by month desc, ratio desc. Round Ratio to 1 decimal**
+```sql
+WITH SalesData AS (
+      SELECT
+         P.Name,
+         D.ProductID,
+         EXTRACT(MONTH FROM D.ModifiedDate) AS Month,
+         EXTRACT(YEAR FROM D.ModifiedDate) AS Year,
+         SUM(D.OrderQty) AS Sales
+      FROM adventureworks2019.Sales.SalesOrderDetail D
+      JOIN adventureworks2019.Production.Product P ON D.ProductID = P.ProductID
+      WHERE EXTRACT(YEAR FROM D.ModifiedDate) = 2011
+      GROUP BY EXTRACT(YEAR FROM D.ModifiedDate), EXTRACT(MONTH FROM D.ModifiedDate), P.Name, D.ProductID
+),
+
+     StockData AS (
+      SELECT
+         P.Name,
+         W.ProductID,
+         EXTRACT(MONTH FROM W.ModifiedDate) AS Month,
+         EXTRACT(YEAR FROM W.ModifiedDate) AS Year,
+         SUM(W.StockedQty) AS Stock
+      FROM adventureworks2019.Production.WorkOrder W
+      JOIN adventureworks2019.Production.Product P ON W.ProductID = P.ProductID
+      WHERE EXTRACT(YEAR FROM W.ModifiedDate) = 2011
+      GROUP BY EXTRACT(YEAR FROM W.ModifiedDate), EXTRACT(MONTH FROM W.ModifiedDate), P.Name, W.ProductID
+)
+
+SELECT
+   S.Month,
+   S.Year,
+   S.ProductID,
+   S.Name,
+   S.Sales,
+   T.Stock,
+   ROUND(T.Stock/S.Sales,1) AS ratio
+FROM SalesData S
+JOIN StockData T ON S.ProductID = T.ProductID AND S.Month = T.Month
+ORDER BY S.Month DESC, ratio DESC;
+```
+
+| Month | Year | ProductID | Name                   | Sales | Stock | Ratio |
+|-------|------|-----------|------------------------|-------|-------|-------|
+| 12    | 2011 | 745       | HL Mountain Frame      | 1     | 27    | 27.0  |
+| 12    | 2011 | 743       | HL Mountain Frame      | 1     | 26    | 26.0  |
+| 12    | 2011 | 748       | HL Mountain Frame      | 2     | 32    | 16.0  |
+| 12    | 2011 | 722       | LL Road Frame          | 4     | 47    | 11.8  |
+| 12    | 2011 | 741       | HL Mountain Frame      | 5     | 37    | 7.4   |
+| 12    | 2011 | 727       | HL Mountain Frame      | 5     | 36    | 7.2   |
+| 12    | 2011 | 738       | LL Road Frame          | 10    | 64    | 6.4   |
+| 12    | 2011 | 730       | LL Road Frame          | 10    | 38    | 3.8   |
+| 12    | 2011 | 729       | LL Road Frame          | 10    | 43    | 4.3   |
+| 12    | 2011 | 732       | ML Road Frame          | 10    | 16    | 1.6   |
+| 12    | 2011 | 751       | Road-150 Red           | 32    | 47    | 1.5   |
+| 12    | 2011 | 750       | Road-150 Red           | 25    | 38    | 1.5   |
+| 12    | 2011 | 775       | Mountain-100 Black     | 23    | 28    | 1.2   |
+| 12    | 2011 | 773       | Mountain-100 Silver    | 32    | 36    | 1.1   |
+| 12    | 2011 | 778       | Mountain-100 Black     | 25    | 27    | 1.1   |
+| 12    | 2011 | 768       | Road-650 Black         | 19    | 21    | 1.1   |
+| 12    | 2011 | 765       | Road-650 Black         | 39    | 43    | 1.1   |
+| 12    | 2011 | 760       | Road-650 Red           | 31    | 33    | 1.1   |
+| 12    | 2011 | 749       | Road-150 Red           | 45    | 51    | 1.1   |
+| 12    | 2011 | 752       | Road-150 Red           | 32    | 35    | 1.1   |
+| 12    | 2011 | 758       | Road-450 Red           | 37    | 37    | 1.0   |
+| 12    | 2011 | 759       | Road-650 Red           | 12    | 12    | 1.0   |
+| 12    | 2011 | 742       | HL Mountain Frame      | 3     | 3     | 1.0   |
+| 12    | 2011 | 757       | Road-450 Red           | 6     | 6     | 1.0   |
+| 12    | 2011 | 762       | Road-650 Red           | 41    | 40    | 1.0   |
+| 12    | 2011 | 756       | Road-450 Red           | 23    | 23    | 1.0   |
+| 12    | 2011 | 770       | Road-650 Black         | 52    | 53    | 1.0   |
+| 12    | 2011 | 774       | Mountain-100 Silver    | 22    | 21    | 1.0   |
+| 12    | 2011 | 755       | Road-450 Red           | 18    | 18    | 1.0   |
+| 12    | 2011 | 761       | Road-650 Red           | 31    | 31    | 1.0   |
+| 12    | 2011 | 777       | Mountain-100 Black     | 29    | 29    | 1.0   |
+| 12    | 2011 | 764       | Road-650 Red           | 23    | 23    | 1.0   |
+| 12    | 2011 | 754       | Road-450 Red           | 29    | 29    | 1.0   |
+| 12    | 2011 | 767       | Road-650 Black         | 10    | 9     | 0.9   |
+| 12    | 2011 | 753       | Road-150 Red           | 49    | 46    | 0.9   |
+| 12    | 2011 | 769       | Road-650 Black         | 9     | 8     | 0.9   |
+| 12    | 2011 | 766       | Road-650 Red           | 33    | 31    | 0.9   |
+| 12    | 2011 | 772       | Mountain-100 Silver    | 18    | 17    | 0.9   |
+| 12    | 2011 | 776       | Mountain-100 Black     | 24    | 22    | 0.9   |
+
+The **HL Mountain Frame** product line showed the highest **Stock-to-Sales ratio**, with some models having a ratio as high as **27.0**. This suggests either overstocking or low sales demand, potentially indicating a need for **discounting strategies** or **marketing efforts** to increase sales.  
+
+Meanwhile, products like the **Road-650 Black** and **Mountain-100 Black** maintained a **balanced stock-to-sales ratio** (around **1.0-1.1**), which may indicate **efficient inventory management** and consistent sales trends.  
+
+Products with a ratio below **1.0**, such as **Mountain-100 Black (ratio: 0.9)**, might be in high demand and could risk **stockouts** if not replenished in time.
+
+### **Query 08: No of order and value at Pending status in 2014
+```sql
+SELECT 
+       EXTRACT( YEAR FROM ModifiedDate) AS Year,
+       Status,
+       COUNT(DISTINCT PurchaseOrderID) AS Order_cnt,
+       SUM(TotalDue) AS Value
+FROM adventureworks2019.Purchasing.PurchaseOrderHeader
+WHERE EXTRACT( YEAR FROM ModifiedDate) = 2014
+      AND Status = 1
+GROUP BY year, Status;
+```
+| Year | Status | Order Count | Value            |
+|------|--------|------------|------------------|
+| 2014 | 1      | 224        | 3,873,579.01     |
+
+In **2014**, there were **224 pending orders** with a total value of **$3,873,579.01**. This indicates a significant volume of transactions still awaiting processing. If these orders remain unfulfilled, they may lead to potential revenue loss or customer dissatisfaction. Monitoring the status and expediting the processing of these orders should be a priority to ensure smooth operations and cash flow management.
+
+## IV. Conclusion
+By utilizing Google BigQuery, this project conducted an in-depth analysis of a bicycle manufacturer’s dataset, uncovering valuable insights into sales performance, product demand, and operational effectiveness. The findings highlight the strong contribution of high-value bike sales, supported by steady accessory demand, as well as notable growth in specific product segments and consistently high-performing sales regions. Additionally, the analysis identified key areas for improvement, including inventory optimization, customer retention efforts, and order processing efficiency. Leveraging big data analytics, this study offers a data-driven framework for strategic decision-making, enabling the company to refine its product portfolio, enhance marketing initiatives, and streamline operations. These insights provide a pathway for sustainable growth and a competitive edge in the evolving bicycle industry.
+
 
 
 
