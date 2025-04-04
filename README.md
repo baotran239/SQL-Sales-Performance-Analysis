@@ -113,5 +113,188 @@ LIMIT 3;
 | 3   | Road Frames     | 5564     | 1137    | 3.89     |
 
 The **top 3 fastest-growing subcategories**—**Mountain Frames, Socks, and Road Frames** have all experienced significant YoY growth, with rates of **5.21, 4.21, and 3.89**, respectively. This suggests an overall surge in demand for both **cycling equipment and accessories**, possibly driven by **market trends, increased consumer interest, or effective promotional strategies**. The sharp increase in sales volume, particularly in frames, indicates a growing enthusiasm for cycling, while the rise in socks sales may reflect shifting consumer preferences or seasonal trends. Further analysis could examine external factors such as **pricing, marketing campaigns, or industry shifts** that contributed to this strong performance.  
- 
+
+### **Query 03: Ranking Top 3 TeritoryID with biggest Order quantity of every year. If there's TerritoryID with same quantity in a year, do not skip the rank number**
+```sql
+WITH SalesByYear AS (
+  SELECT
+    CAST(FORMAT_TIMESTAMP('%Y', TIMESTAMP(D.ModifiedDate)) AS INT64) AS Year,
+    H.TerritoryID,
+    SUM(D.OrderQty) AS TotalOrderQty
+  FROM adventureworks2019.Sales.SalesOrderDetail D
+  JOIN adventureworks2019.Sales.SalesOrderHeader H 
+    ON D.SalesOrderID = H.SalesOrderID
+  GROUP BY Year, H.TerritoryID
+)
+
+SELECT
+  Year,
+  TerritoryID,
+  TotalOrderQty,
+  DENSE_RANK() OVER (PARTITION BY Year ORDER BY TotalOrderQty DESC) AS TerritoryRank
+FROM SalesByYear
+QUALIFY TerritoryRank <= 3
+ORDER BY Year DESC, TerritoryRank;
+```
+| Year | TerritoryID | TotalOrderQty | TerritoryRank |
+|------|------------|--------------|--------------|
+| 2014 | 4          | 11632        | 1            |
+| 2014 | 6          | 9711         | 2            |
+| 2014 | 1          | 8823         | 3            |
+| 2013 | 4          | 26682        | 1            |
+| 2013 | 6          | 22553        | 2            |
+| 2013 | 1          | 17452        | 3            |
+| 2012 | 4          | 17553        | 1            |
+| 2012 | 6          | 14412        | 2            |
+| 2012 | 1          | 8537         | 3            |
+| 2011 | 4          | 3238         | 1            |
+| 2011 | 6          | 2705         | 2            |
+| 2011 | 1          | 1964         | 3            |
+
+From **2011 to 2014**, **Territory 4 consistently led in total orders**, peaking in **2013 (26,682 orders) before a sharp decline in 2014**, while **Territory 6 and Territory 1 followed a similar trend**, indicating **a strong market boom in 2013 followed by a significant drop in 2014**, possibly due to **external economic factors, market saturation, or shifting customer demand**.
+
+### **Query 04: Calculate Total Discount Cost belongs to Seasonal Discount for each SubCategory
+```sql
+SELECT
+    CAST(FORMAT_TIMESTAMP('%Y', TIMESTAMP(D.ModifiedDate)) AS INT64) AS Year,
+    S.Name,
+    SUM(O.DiscountPct*D.UnitPrice*D.OrderQty) AS Total_Discount_Cost
+FROM adventureworks2019.Sales.SalesOrderDetail D
+INNER JOIN adventureworks2019.Sales.SpecialOffer O ON D.SpecialOfferID = O.SpecialOfferID 
+INNER JOIN adventureworks2019.Production.Product P ON D.ProductID = P.ProductID  
+INNER JOIN adventureworks2019.Production.ProductSubcategory S  
+    ON CAST(P.ProductSubcategoryID AS INT64) = S.ProductSubcategoryID
+WHERE O.Type = "Seasonal Discount"
+GROUP BY S.Name, Year;
+```
+| Year | Name    | Total_Discount_Cost |
+|------|--------|--------------------|
+| 2012 | Helmets | 827.65             |
+| 2013 | Helmets | 1606.04            |
+
+Seasonal discounts were exclusively applied to the Helmets subcategory in 2012 and 2013. The **Total Discount Cost for Helmets nearly doubled from 2012 (827.65) to 2013 (1606.04)**, indicating a **higher seasonal discount allocation in 2013**, which could be driven by **increased promotions, higher sales volume, or more aggressive discount strategies** to boost demand.  
+
+### **Query 05: Retention rate of Customer in 2014 with status of Successfully Shipped (Cohort Analysis)**
+```sql
+WITH allorder AS (
+        SELECT 
+             DISTINCT H.CustomerID,
+             EXTRACT(MONTH FROM H.ModifiedDate) AS month
+        FROM adventureworks2019.Sales.SalesOrderDetail  AS D
+        JOIN adventureworks2019.Sales.SalesOrderHeader AS H
+        USING(SalesOrderID)
+        WHERE H.Status = 5
+              AND EXTRACT(YEAR FROM H.ModifiedDate) = 2014
+),
+     firstorder AS (
+      SELECT 
+            DISTINCT CustomerID,
+            MIN(month) AS month_join
+      FROM allorder  
+      GROUP BY CustomerID
+)
+
+SELECT 
+    F.month_join, 
+    CONCAT('M-', CAST((A.Month - F.month_join) AS STRING)) AS month_diff,
+    COUNT(A.CustomerID) AS customer_cnt
+FROM allorder A
+JOIN firstorder F ON F.CustomerID = A.CustomerID
+GROUP BY month_join, month_diff
+ORDER BY month_join, month_diff;
+```
+| month_join | month_diff | customer_count |
+|------------|------------|----------------|
+| 1          | M-0        | 2076           |
+| 1          | M-1        | 78             |
+| 1          | M-2        | 89             |
+| 1          | M-3        | 252            |
+| 1          | M-4        | 96             |
+| 1          | M-5        | 61             |
+| 1          | M-6        | 18             |
+| 2          | M-0        | 1805           |
+| 2          | M-1        | 51             |
+| 2          | M-2        | 61             |
+| 2          | M-3        | 234            |
+| 2          | M-4        | 58             |
+| 2          | M-5        | 8              |
+| 3          | M-0        | 1918           |
+| 3          | M-1        | 43             |
+| 3          | M-2        | 58             |
+| 3          | M-3        | 44             |
+| 3          | M-4        | 11             |
+| 4          | M-0        | 1906           |
+| 4          | M-1        | 34             |
+| 4          | M-2        | 44             |
+| 4          | M-3        | 7              |
+| 5          | M-0        | 1947           |
+| 5          | M-1        | 40             |
+| 5          | M-2        | 7              |
+| 6          | M-0        | 909            |
+| 6          | M-1        | 10             |
+| 7          | M-0        | 148            |
+
+Customer retention in 2014 shows a **steep decline** after the first month. While the initial number of customers (M-0) is high, the retention drops significantly within the first three months. For example, in January, only 78 customers remained after the first month out of 2076, and in February, only 51 out of 1805. The trend continues across other cohorts, indicating a common challenge in retaining customers beyond their initial purchase. This suggests the need for **better customer engagement strategies, loyalty programs, and post-purchase incentives** to improve long-term retention.
+
+### **Query 06: Trend of Stock level & MoM diff % by all product in 2011. If %gr rate is null then 0. Round to 1 decimal
+```sql
+WITH StockData AS (
+     SELECT
+        P.Name,
+        SUM(W.StockedQty) AS Stock_Qty,
+        EXTRACT(MONTH FROM W.ModifiedDate) AS Month,
+        EXTRACT(YEAR FROM W.ModifiedDate) AS Year
+     FROM adventureworks2019.Production.WorkOrder W
+     JOIN adventureworks2019.Production. Product P ON W.ProductID = P.ProductID
+     WHERE EXTRACT(YEAR FROM W.ModifiedDate) = 2011
+     GROUP BY EXTRACT(YEAR FROM W.ModifiedDate), EXTRACT(MONTH FROM W.ModifiedDate), P.Name
+)
+
+SELECT
+  curr.Name,
+  curr.Month,
+  curr.Year,
+  curr.Stock_Qty AS curr_stock,
+  prev.Stock_Qty AS prev_stock,
+  IF ((curr.Stock_Qty-prev.Stock_Qty)/prev.Stock_Qty*100 IS NULL, 0, ROUND((curr.Stock_Qty-prev.Stock_Qty)/prev.Stock_Qty*100,1)) AS diff
+FROM StockData AS curr
+JOIN StockData AS prev ON curr.Name = prev.Name AND curr.Month = prev.Month + 1
+ORDER BY curr.name, curr.Month DESC;
+```
+| Product Name       | Month | Year | Current Stock | Previous Stock | MoM Diff (%) |
+|--------------------|-------|------|--------------|---------------|-------------|
+| BB Ball Bearing   | 12    | 2011 | 8475         | 14544         | -41.7       |
+| BB Ball Bearing   | 11    | 2011 | 14544        | 19175         | -24.2       |
+| BB Ball Bearing   | 10    | 2011 | 19175        | 8845          | 116.8       |
+| BB Ball Bearing   | 9     | 2011 | 8845         | 9666          | -8.5        |
+| BB Ball Bearing   | 8     | 2011 | 9666         | 12837         | -24.7       |
+| BB Ball Bearing   | 7     | 2011 | 12837        | 5259          | 144.1       |
+| Blade             | 12    | 2011 | 1842         | 3598          | -48.8       |
+| Blade             | 11    | 2011 | 3598         | 4670          | -23.0       |
+| Blade             | 10    | 2011 | 4670         | 2122          | 120.1       |
+| Blade             | 9     | 2011 | 2122         | 2382          | -10.9       |
+| Blade             | 8     | 2011 | 2382         | 3166          | -24.8       |
+| Blade             | 7     | 2011 | 3166         | 1280          | 147.3       |
+| Chain Stays       | 12    | 2011 | 1842         | 3598          | -48.8       |
+| Chain Stays       | 11    | 2011 | 3598         | 4670          | -23.0       |
+| Chain Stays       | 10    | 2011 | 4670         | 2122          | 120.1       |
+| Down Tube         | 12    | 2011 | 921          | 1799          | -48.8       |
+| Down Tube         | 11    | 2011 | 1799         | 2335          | -23.0       |
+| Down Tube         | 10    | 2011 | 2335         | 1061          | 120.1       |
+| Fork Crown       | 12    | 2011 | 921          | 1799          | -48.8       |
+| Fork Crown       | 11    | 2011 | 1799         | 2335          | -23.0       |
+| Fork Crown       | 10    | 2011 | 2335         | 1061          | 120.1       |
+| Front Derailleur | 12    | 2011 | 861          | 1440          | -40.2       |
+| Front Derailleur | 11    | 2011 | 1440         | 1918          | -24.9       |
+| Front Derailleur | 10    | 2011 | 1918         | 874           | 119.5       |
+
+The stock levels for most products in 2011 show **high month-to-month fluctuations**. Significant **declines** and **spikes** indicate irregular demand or supply chain inconsistencies.
+- **Drastic changes**: Several products, such as *BB Ball Bearing, Blade, and Fork Crown*, have extreme changes exceeding **100%** in some months.
+- **Common downtrend**: Many products see sharp stock declines towards the end of the year, possibly due to **seasonal demand or inventory clearing**.
+- **High volatility**: Products like *BB Ball Bearing (July: +144.1%, August: -24.7%)* and *Blade (July: +147.3%, August: -24.8%)* indicate unstable stock management.
+
+A more **consistent inventory strategy** is needed to balance supply and demand, reducing large fluctuations.
+
+
+
 
