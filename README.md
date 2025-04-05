@@ -1,3 +1,5 @@
+# [SQL] Sales Performance Analysis
+
 ## I. Introduction
 This project utilizes Google BigQuery to evaluate the sales performance of a bicycle manufacturer. By employing advanced SQL techniques, including Common Table Expressions (CTEs), aggregate functions, and table functions, it processes essential metrics such as sales volume, number of orders, customer retention rate, and year-over-year/month-over-month growth rates. These insights reveal underlying trends and support data-driven strategies to enhance business performance and boost sales.
 
