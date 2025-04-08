@@ -13,7 +13,6 @@ This is a dataset available on Google BigQuery named "adventureworks2019". To ac
 ### **Query 01: Calculate Quantity of items, Sales value & Order quantity by each Subcategory in the last 12 months**
 ```sql
 WITH FilteredOrders AS (
-    -- Lọc đơn hàng trong 12 tháng trước ngay từ đầu
     SELECT ProductID, SalesOrderID, OrderQty, LineTotal, ModifiedDate
     FROM adventureworks2019.Sales.SalesOrderDetail
     WHERE DATE(ModifiedDate) >= DATE_SUB((SELECT MAX(DATE(ModifiedDate)) FROM adventureworks2019.Sales.SalesOrderHeader), INTERVAL 12 MONTH)
